@@ -1,0 +1,15 @@
+[package]
+name = "kytwc"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+colog = "1.4.0"
+futures-util = "0.3.31"
+log = "0.4.29"
+serde = { version = "1.0.228", features = ["derive"] }
+serde-pickle = "1.2.0"
+serde_json = "1.0.149"
+thiserror = "2.0.18"
+tokio = { version = "1.49.0", features = ["full"] }
+tokio-tungstenite = "0.28.0"
