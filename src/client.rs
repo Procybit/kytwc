@@ -8,10 +8,7 @@ use thiserror::Error;
 use tokio::{
     net::TcpStream,
     select,
-    sync::{
-        mpsc::{self, Receiver, error::SendError},
-        oneshot,
-    },
+    sync::mpsc::{self, Receiver, error::SendError},
 };
 use tokio_tungstenite::{
     WebSocketStream,
@@ -68,8 +65,6 @@ pub struct Client {
     server: ServerHandle,
     ws_sender: SplitSink<WebSocketStream<TcpStream>, Message>,
     ws_receiver: SplitStream<WebSocketStream<TcpStream>>,
-    kill_tx: oneshot::Sender<()>,
-    kill_rx: oneshot::Receiver<()>,
 }
 
 impl Client {
@@ -83,8 +78,6 @@ impl Client {
 
         // server -> client communication
         let (tx, rx) = mpsc::channel(mpsc_channel_buffer);
-
-        let (kill_tx, kill_rx) = oneshot::channel();
 
         // scratch cloud handshake
         let (mut ws_sender, mut ws_receiver) = ws_stream.split();
@@ -113,8 +106,6 @@ impl Client {
                         server,
                         ws_sender,
                         ws_receiver,
-                        kill_tx,
-                        kill_rx,
                     })
                 } else {
                     send_status(&mut ws_sender, ErrorKind::Generic).await;
@@ -161,9 +152,6 @@ impl Client {
                             }
                         }
                     }
-                }
-                _ = &mut self.kill_rx => {
-                    break Ok(())
                 }
             }
         }
