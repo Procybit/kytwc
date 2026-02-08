@@ -38,7 +38,7 @@ pub enum ClientSignal {
 }
 
 #[derive(Debug)]
-enum Origin {
+pub enum Origin {
     Server,
     Client,
 }
@@ -57,6 +57,8 @@ pub enum ClientError {
     ProtocolViolation,
     #[error("server closed connection, possible protocol violation")]
     Closed(Origin),
+    #[error("server refused to register client")]
+    CantRegister,
 }
 
 #[derive(Debug)]
@@ -74,12 +76,13 @@ impl Client {
     pub async fn try_handshake(
         mut server: ServerHandle,
         tcp_stream: TcpStream,
+        mpsc_channel_buffer: usize,
     ) -> Result<Self, ClientError> {
         // accept as websocket; close if error
         let ws_stream = accept_async(tcp_stream).await?;
 
         // server -> client communication
-        let (tx, rx) = mpsc::channel(100);
+        let (tx, rx) = mpsc::channel(mpsc_channel_buffer);
 
         let (kill_tx, kill_rx) = oneshot::channel();
 
@@ -97,7 +100,9 @@ impl Client {
                 {
                     // register in server
                     let auth = Auth { project_id, user };
-                    let (id, inform) = server.register(tx.clone(), auth.clone()).await;
+                    let Some((id, inform)) = server.register(tx.clone(), auth.clone()).await else {
+                        return Err(ClientError::CantRegister);
+                    };
                     for (name, value) in inform {
                         Self::inform(&mut ws_sender, name, value).await?;
                     }

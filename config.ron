@@ -1,0 +1,27 @@
+// Default configuration
+// Must be present in working directory with all
+// fields lited below
+Config(
+    // Address to bind TcpListener to,
+    // 0.0.0.0 matches any ip address
+    // port 0 tells to request a port from OS
+    bind: "0.0.0.0:9001",
+    // internal thing,
+    // better to leave it as it is
+    // sets buffer size for communication channels
+    // between async tasks
+    mpsc_channel_buffer: 100,
+    // Policy is the set of rules for servers to
+    // decide which clients' requests to proccess
+    // most of them are self-explanatory
+    policy: (
+        variable_name_max_length: 1024,
+        variable_name_min_length: 1,
+        // maximum length of variable value,
+        // in bytes, if converted to String
+        value_max_length: 10000,
+        username_max_length: 20,
+        username_min_length: 1,
+    )
+)
+

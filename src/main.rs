@@ -1,6 +1,7 @@
 #![feature(hash_set_entry)]
 
 mod client;
+mod config;
 mod protocol;
 mod server;
 mod status;
@@ -10,17 +11,22 @@ use futures_util::FutureExt;
 use log::*;
 use tokio::{net::TcpListener, select};
 
-use crate::{client::Client, server::*};
+use crate::{client::Client, config::get_config, server::*};
 
 #[tokio::main]
 async fn main() {
     colog::init();
+    log_panics::init();
 
-    // TODO: TLS
-    // TODO: configuration (RON file)
-    let (cloud_server, server_handle) = Server::new();
+    let config = get_config().unwrap();
+
+    let (cloud_server, server_handle) = Server::new(config.clone());
     tokio::spawn(cloud_server.serve());
-    let tcp_listener = TcpListener::bind("0.0.0.0:9001").await.unwrap();
+    let tcp_listener = TcpListener::bind(&config.bind).await.unwrap();
+    info!(
+        "TCP listener is bound to {}",
+        tcp_listener.local_addr().unwrap()
+    );
 
     // for incoming tcp connections
     loop {
@@ -28,7 +34,11 @@ async fn main() {
             Ok((stream, peer)) = tcp_listener.accept() => {
                 info!("Inbound connection: {peer}");
                 tokio::spawn(
-                    Client::try_handshake(server_handle.clone(), stream)
+                    Client::try_handshake(
+                        server_handle.clone(),
+                        stream,
+                        config.mpsc_channel_buffer
+                    )
                     .then(async |client_res| {
                         match client_res {
                             Ok(client) => {
